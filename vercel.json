@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
+  "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
@@ -10,5 +10,5 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "devCommand": "cd frontend && npm install && npm run dev"
+  "devCommand": "cd frontend && npm run dev"
 }
