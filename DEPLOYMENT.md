@@ -18,6 +18,7 @@ docker-compose up -d
 ### Prerequisites
 - GitHub account with repository pushed
 - Vercel account (https://vercel.com)
+- **Backend API deployed** (see Backend Deployment section below)
 
 ### Steps
 
@@ -33,13 +34,88 @@ docker-compose up -d
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
 
-3. **Environment Variables** (Set in Vercel UI)
-   - Go to: Settings → Environment Variables
-   - Add: `VITE_API_BASE_URL` = `https://your-backend-api.com`
+3. **Set Environment Variables** (IMPORTANT!)
+   - Go to: **Settings** → **Environment Variables**
+   - Add:
+     - **Key**: `VITE_API_BASE_URL`
+     - **Value**: `https://your-backend-api-url.com` (without `/api/v1`)
+   - Click "Save"
+
+   **Example values:**
+   - Local: `http://localhost:8000`
+   - Railway: `https://invenflow-backend-xyz.railway.app`
+   - Render: `https://invenflow-backend.onrender.com`
+   - Heroku: `https://invenflow-backend.herokuapp.com`
+   - AWS: `https://api.yourdomain.com`
 
 4. **Deploy**
    - Vercel will automatically deploy on every push to main
    - Your site will be available at: `https://invenflow.vercel.app`
+   - Frontend will connect to your backend via the `VITE_API_BASE_URL`
+
+---
+
+## Backend Deployment Options
+
+### Option 1: Railway (Recommended - Simple)
+
+1. Go to https://railway.app
+2. Click "New Project" → "Deploy from GitHub"
+3. Select your InvenFlow repository
+4. Select the `backend` directory
+5. Add environment variables:
+   ```
+   DATABASE_URL=postgresql://user:pass@host:5432/inventory_db
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your-secure-password
+   POSTGRES_DB=inventory_db
+   ```
+6. Deploy
+7. Get your backend URL: `https://your-app-name.railway.app`
+8. Add this to Vercel's `VITE_API_BASE_URL`
+
+### Option 2: Render (Free Tier Available)
+
+1. Go to https://render.com
+2. Click "New" → "Web Service"
+3. Connect GitHub repository
+4. Settings:
+   - **Name**: InvenFlow Backend
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Add environment variables (same as above)
+6. Deploy
+7. Get URL and add to Vercel
+
+### Option 3: Heroku (Paid)
+
+```bash
+# Install Heroku CLI
+heroku login
+heroku create invenflow-backend
+
+# Set environment variables
+heroku config:set POSTGRES_DB=inventory_db --app invenflow-backend
+
+# Deploy
+git push heroku main
+
+# Get URL
+heroku info --app invenflow-backend
+```
+
+### Option 4: Docker Hub + Self-Hosted
+
+```bash
+# Build and push to Docker Hub
+docker build -t your-username/invenflow-backend:latest ./backend
+docker push your-username/invenflow-backend:latest
+
+# Then host on:
+# - AWS EC2, DigitalOcean, or Linode
+# - Update VITE_API_BASE_URL to your server IP/domain
+```
 
 ---
 
@@ -48,6 +124,7 @@ docker-compose up -d
 ### Prerequisites
 - GitHub repository pushed
 - Netlify account (https://netlify.com)
+- Backend API deployed
 
 ### Steps
 
@@ -62,9 +139,12 @@ docker-compose up -d
    - **Publish Directory**: `frontend/dist`
 
 3. **Environment Variables**
-   - Go to: Site Settings → Build & Deploy → Environment
-   - Add: `VITE_API_BASE_URL` = `https://your-backend-api.com`
-   - Add: `NPM_FLAGS` = `--include=dev`
+   - Go to: **Site Settings** → **Build & Deploy** → **Environment**
+   - Add:
+     - **Key**: `VITE_API_BASE_URL`
+     - **Value**: `https://your-backend-api-url.com`
+     - **Key**: `NPM_FLAGS`
+     - **Value**: `--include=dev`
 
 4. **Deploy**
    - Netlify will auto-deploy on every push
@@ -72,58 +152,92 @@ docker-compose up -d
 
 ---
 
-## Backend Deployment (Docker)
+## Full-Stack Docker Deployment
 
-### Option 1: Docker Hub
+### Using Docker Compose on Cloud Server
 
+1. **Upload to cloud server** (DigitalOcean, AWS, Azure, etc.)
+   ```bash
+   scp -r . user@server:/app
+   ```
+
+2. **Run on server**
+   ```bash
+   cd /app
+   docker-compose up -d
+   ```
+
+3. **Access**
+   - Frontend: `http://your-server-ip:3000`
+   - Backend: `http://your-server-ip:8000`
+   - API Docs: `http://your-server-ip:8000/docs`
+
+---
+
+## Troubleshooting Network Errors
+
+### Frontend Shows "Network Error"
+- ✅ Check `VITE_API_BASE_URL` in Vercel environment variables
+- ✅ Verify backend is deployed and running
+- ✅ Check backend URL is accessible (test in browser)
+- ✅ Verify CORS is enabled on backend
+- ✅ Check browser console for specific error message
+
+### "Cannot connect to API" Error
+This means:
+1. Backend URL is wrong - update `VITE_API_BASE_URL`
+2. Backend is down - restart the backend service
+3. Network/firewall issue - check if backend URL is accessible
+
+### How to Test Backend Connection
 ```bash
-# Build and push backend image
-docker build -t your-username/inventory-backend:latest ./backend
-docker push your-username/inventory-backend:latest
+# Test if backend is running
+curl https://your-backend-url.com/health
 
-# Build and push frontend image
-docker build -t your-username/inventory-frontend:latest ./frontend
-docker push your-username/inventory-frontend:latest
+# Should return:
+# {"status":"ok","version":"1.0.0"}
 ```
 
-### Option 2: AWS, DigitalOcean, or Railway
+---
 
-See respective platform documentation for containerized deployment.
+## Project Structure
+
+```
+InvenFlow/
+├── frontend/          # React + Vite
+│   ├── src/
+│   ├── vite.config.js
+│   └── package.json
+├── backend/           # FastAPI
+│   ├── app/
+│   ├── requirements.txt
+│   └── Dockerfile
+├── docker-compose.yml
+├── vercel.json        # Vercel config
+└── netlify.toml       # Netlify config
+```
 
 ---
 
-## API Configuration
-
-The frontend automatically reads the API base URL from the `VITE_API_BASE_URL` environment variable. 
-
-- **Local Development**: `http://localhost:8000`
-- **Production**: Set in deployment platform environment variables
-
-Example API endpoint: `{VITE_API_BASE_URL}/api/v1/products`
-
----
-
-## Troubleshooting
-
-### 404 Errors on Routes
-- ✅ Already fixed with `vercel.json` rewrites
-- ✅ Already fixed with Netlify `_redirects`
-
-### Build Failures
-- Check that all dependencies are installed: `npm install`
-- Verify Node version: `node --version` (18+ recommended)
-- Clear build cache and redeploy
-
-### API Connection Issues
-- Verify backend is running
-- Check `VITE_API_BASE_URL` environment variable
-- Enable CORS on backend API
-
----
-
-## Project URLs
+## Project URLs (After Deployment)
 
 - **GitHub**: https://github.com/3006Rohit/InvenFlow
 - **Frontend (Vercel)**: https://invenflow.vercel.app
 - **Frontend (Netlify)**: https://invenflow.netlify.app
-- **API Docs (Local)**: http://localhost:8000/docs
+- **Backend API**: https://your-backend-url.com (set your own)
+- **API Docs**: https://your-backend-url.com/docs
+
+---
+
+## Quick Checklist Before Going Live
+
+- [ ] Backend deployed and running
+- [ ] `VITE_API_BASE_URL` set in Vercel/Netlify
+- [ ] Backend health endpoint working: `curl {VITE_API_BASE_URL}/health`
+- [ ] Database connected and migrated
+- [ ] CORS enabled on backend
+- [ ] Environment variables set
+- [ ] Frontend deployment successful
+- [ ] All routes working (/, /products, /customers, /orders)
+- [ ] API calls returning data
+
